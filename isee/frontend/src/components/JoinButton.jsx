@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { api } from '../api';
 import { callExtension } from '../extension';
 
 // Shows the tracking notice, arms the extension, then opens the Meet link.
@@ -9,24 +10,28 @@ export default function JoinButton({ meeting }) {
   const [noExt, setNoExt] = useState(false);
 
   const openMeet = () => window.open(meeting.meetUrl, '_blank', 'noopener');
-  const show = () => { setErr(''); setNoExt(false); dlg.current.showModal(); };
+  const show = () => {
+    setErr(''); setNoExt(false);
+    dlg.current.showModal();
+    api('/api/health').catch(() => {}); // wakes the server while the student reads the notice
+  };
 
   async function proceed() {
     setBusy(true); setErr(''); setNoExt(false);
     try {
-      await callExtension('ping'); // is the extension there? (2.5 s)
+      await callExtension('ping'); // is the extension on this page?
     } catch {
       setNoExt(true);
-      setErr('The Isee extension did not respond. Install it, log in from its toolbar icon, then try again.');
+      setErr('The Isee extension was not found on this page. Make sure it is enabled, reload this page, then try again.');
       setBusy(false);
       return;
     }
     try {
-      await callExtension('arm', { meetingId: meeting.id }, 20000); // the server may be slow to wake up
+      await callExtension('arm', { meetingId: meeting.id }, 25000); // the server may be slow to wake up
       dlg.current.close();
       openMeet();
     } catch (e) {
-      setErr(e.code === 'not-installed' ? 'The extension is taking too long to start tracking. Try again in a moment.' : e.message);
+      setErr(e.code === 'not-installed' ? 'The server took too long to answer. Try again in a moment.' : e.message);
     } finally { setBusy(false); }
   }
 

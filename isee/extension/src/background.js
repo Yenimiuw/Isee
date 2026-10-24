@@ -19,6 +19,9 @@ async function api(path, { method = 'GET', body } = {}) {
     method,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(15000),
+  }).catch((e) => {
+    throw new Error(e.name === 'TimeoutError' ? 'The Isee server took too long to answer' : 'Could not reach the Isee server');
   });
   let res = await call(s.access_token);
   if (res.status === 401 && s.refresh_token) {
@@ -135,6 +138,10 @@ async function onMeet(msg, sender, ts) {
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, respond) => {
+  if (msg.type === 'web' && msg.payload?.type === 'ping') { // answered at once, never queued behind slow requests
+    respond(fromWeb(sender) ? { ok: true } : { ok: false, error: 'Not allowed: this site is not in WEB_ORIGINS' });
+    return false;
+  }
   const ts = Date.now();
   serial(async () => {
     if (msg.type === 'web') return onWeb(msg.payload, sender);

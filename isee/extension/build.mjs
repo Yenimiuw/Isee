@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 const API_URL = (process.env.API_URL || 'http://localhost:4000').replace(/\/$/, '');
 const WEB_ORIGINS = (process.env.WEB_ORIGINS || 'http://localhost:5173')
-  .split(',').map((s) => s.trim().replace(/\/$/, '')).filter(Boolean);
+  .split(',').map((s) => s.trim()).filter(Boolean).map((s) => new URL(s).origin);
 const watch = process.argv.includes('--watch');
 
 fs.rmSync('dist', { recursive: true, force: true });
