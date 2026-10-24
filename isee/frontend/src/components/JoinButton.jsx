@@ -14,14 +14,19 @@ export default function JoinButton({ meeting }) {
   async function proceed() {
     setBusy(true); setErr(''); setNoExt(false);
     try {
-      await callExtension('arm', { meetingId: meeting.id });
+      await callExtension('ping'); // is the extension there? (2.5 s)
+    } catch {
+      setNoExt(true);
+      setErr('The Isee extension did not respond. Install it, log in from its toolbar icon, then try again.');
+      setBusy(false);
+      return;
+    }
+    try {
+      await callExtension('arm', { meetingId: meeting.id }, 20000); // the server may be slow to wake up
       dlg.current.close();
       openMeet();
     } catch (e) {
-      setNoExt(e.code === 'not-installed');
-      setErr(e.code === 'not-installed'
-        ? 'The Isee extension did not respond. Install it, log in from its toolbar icon, then try again.'
-        : e.message);
+      setErr(e.code === 'not-installed' ? 'The extension is taking too long to start tracking. Try again in a moment.' : e.message);
     } finally { setBusy(false); }
   }
 
