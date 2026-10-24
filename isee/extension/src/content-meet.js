@@ -4,9 +4,10 @@ const LEAVE_SELECTOR = 'button[aria-label^="Leave call"]'; // Meet's hang-up but
 const JOIN_FALLBACK_MS = 45000; // if the button is never found, count the student as joined after this long
 
 (() => {
-  const m = location.pathname.match(/^\/([a-z]{3}-[a-z]{4}-[a-z]{3})\b/i);
+  const m = location.pathname.match(/\b([a-z]{3}-[a-z]{4}-[a-z]{3})\b/i);
   if (!m) return;
   const code = m[1].toLowerCase();
+  console.log('[Isee] content script running on Meet code', code);
   const send = (msg) => chrome.runtime.sendMessage(msg).catch(() => null);
   let started = false;
 

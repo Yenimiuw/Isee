@@ -46,9 +46,11 @@ function App() {
     </>);
   } else if (armed) {
     body = (<>
-      <div className="status"><span className="dot" />Ready</div>
+      <div className="status"><span className="dot" />{Date.now() - armed.at > 15 * 60 * 1000 ? 'Expired' : 'Ready'}</div>
       <h2>{armed.title}</h2>
-      <p className="muted">Tracking starts when this meeting opens in a tab.</p>
+      {Date.now() - armed.at > 15 * 60 * 1000
+        ? <p className="muted">This was not opened in time. Click Join meeting on the website again.</p>
+        : <p className="muted">Waiting for a Meet tab with the code <strong>{armed.meetCode}</strong>. Tracking starts when it opens (you can refresh the tab).</p>}
     </>);
   } else {
     body = (<>

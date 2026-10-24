@@ -6,6 +6,7 @@ const ARM_TTL = 15 * 60 * 1000; // armed meeting must be opened within 15 minute
 
 const get = async (k) => (await chrome.storage.local.get(k))[k];
 const set = (o) => chrome.storage.local.set(o);
+const codeOf = (u) => { try { return new URL(u).pathname.match(/\b([a-z]{3}-[a-z]{4}-[a-z]{3})\b/i)?.[1].toLowerCase() ?? null; } catch { return null; } };
 const hostOf = (u) => { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.hostname : 'browser page'; } catch { return null; } };
 
 // One handler at a time, so storage read-modify-write never interleaves.
@@ -100,7 +101,7 @@ async function onWeb(p, sender) {
     const d = await api('/api/sessions/start', { method: 'POST', body: { meetingId: p.meetingId } });
     await set({ armed: { sessionId: d.sessionId, meetingId: p.meetingId, meetCode: d.meetCode, title: d.title, at: Date.now() } });
     // If the Meet tab is already open, tell it now instead of waiting for a reload.
-    const open = await chrome.tabs.query({ url: `https://meet.google.com/${d.meetCode}*` });
+    const open = (await chrome.tabs.query({ url: 'https://meet.google.com/*' })).filter((t) => codeOf(t.url) === d.meetCode);
     for (const t of open) chrome.tabs.sendMessage(t.id, { type: 'meet:armed' }).catch(() => {});
     return { ok: true, title: d.title };
   }
@@ -112,6 +113,7 @@ async function onMeet(msg, sender, ts) {
   if (!tab) return { track: false };
   let tr = await get('tracking');
   if (msg.type === 'meet:hello') {
+    console.log('[Isee] Meet tab asked to track', msg.code, '| armed code:', (await get('armed'))?.meetCode ?? 'none');
     if (tr && tr.tabId === tab.id) { Object.assign(tr, { windowId: tab.windowId }); await set({ tracking: tr }); return { track: true, joined: tr.joined }; }
     const armed = await get('armed');
     if (!tr && armed && armed.meetCode === msg.code && ts - armed.at < ARM_TTL) {
@@ -180,7 +182,7 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
   const ts = Date.now();
   serial(async () => {
     const tr = await get('tracking');
-    if (tr && tr.tabId === tabId && !change.url.startsWith(`https://meet.google.com/${tr.meetCode}`)) await endTracking(tr, ts);
+    if (tr && tr.tabId === tabId && codeOf(change.url) !== tr.meetCode) await endTracking(tr, ts);
   });
 });
 
