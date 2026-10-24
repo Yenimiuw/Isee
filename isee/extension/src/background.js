@@ -99,6 +99,9 @@ async function onWeb(p, sender) {
     if (await get('tracking')) throw new Error('You are already in a tracked meeting. Leave it before joining another');
     const d = await api('/api/sessions/start', { method: 'POST', body: { meetingId: p.meetingId } });
     await set({ armed: { sessionId: d.sessionId, meetingId: p.meetingId, meetCode: d.meetCode, title: d.title, at: Date.now() } });
+    // If the Meet tab is already open, tell it now instead of waiting for a reload.
+    const open = await chrome.tabs.query({ url: `https://meet.google.com/${d.meetCode}*` });
+    for (const t of open) chrome.tabs.sendMessage(t.id, { type: 'meet:armed' }).catch(() => {});
     return { ok: true, title: d.title };
   }
   throw new Error('Unknown request');
